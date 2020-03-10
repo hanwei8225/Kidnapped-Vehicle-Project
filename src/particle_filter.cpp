@@ -114,24 +114,26 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
    *   probably find it useful to implement this method and use it as a helper 
    *   during the updateWeights phase.
    */
+  //每一个地图上的参考点坐标，都从测量点中找到与之最接近的一个，将两个对齐
 
-  //找到每一个与测量值最近的预测值，并且将其与
+  vector<LandmarkObs> new_observations;
 
-  for (int i = 0; i < observations.size(); i++)
+  for (int i = 0; i < predicted.size(); i++)
   {
-    double min_len = dist(predicted[0].x, predicted[0].y, observations[i].x, observations[i].y);
+    double min_len = dist(predicted[i].x, predicted[i].y, observations[0].x, observations[0].y);
     int index = 0;
-    for (int j = 0; j < predicted.size(); j++)
+    for (int j = 0; j < observations.size(); j++)
     {
-      double len = dist(predicted[j].x, predicted[j].y, observations[i].x, observations[i].y);
+      double len = dist(predicted[i].x, predicted[i].y, observations[j].x, observations[j].y);
       if (len < min_len)
       {
         min_len = len;
         index = j;
       }
     }
-    observations[i] = id;
+    new_observations[i] = observations[index];
   }
+  observations = new_observations;
 }
 
 void ParticleFilter::updateWeights(double sensor_range,
@@ -160,7 +162,7 @@ void ParticleFilter::updateWeights(double sensor_range,
     //对于每一个粒子
     Particle p = particles[i];
 
-    //只考虑在传感器测量范围内的地图参考点作为预测点,作为整体的预测点集，为地图坐标,计算方形比计算圆形快很多
+    //只考虑在传感器测量范围内的地图参考点作为点集，为地图坐标,计算方形比计算圆形快很多
     vector<LandmarkObs> predictions;
     for (int k = 0; k < map_landmarks.landmark_list.size(); k++)
     {
@@ -175,7 +177,7 @@ void ParticleFilter::updateWeights(double sensor_range,
       }
     }
 
-    //转换每一个测量值的坐标，从汽车坐标系转换为地图坐标系
+    //转换每一个测量到的参考点的坐标，从汽车坐标系转换为地图坐标系
     vector<LandmarkObs> observations_map;
     for (int j = 0; j < observations.size(); j++)
     {
@@ -186,6 +188,19 @@ void ParticleFilter::updateWeights(double sensor_range,
 
     }
 
+    //匹配测试数据属于哪个地标
+    dataAssociation(predictions,observations_map);
+
+    //计算weight
+    for (int j = 0; j < predictions.size(); j++)
+    {
+      LandmarkObs pred = predictions[j];
+      LandmarkObs obs = observations_map[j];
+      double pxy = 0.5 * M_PI*(sig_x*sig_y)*exp(-((((obs.x -pred.x) * (obs.x -pred.x)) / (2 * (sig_x * sig_x)))
+                                              + (((obs.y -pred.y) * (obs.y -pred.y)) / (2 * (sig_y * sig_y)))));
+      particles[i].weight *= pxy;
+    }
+    
 
 
 
