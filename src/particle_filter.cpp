@@ -218,6 +218,24 @@ void ParticleFilter::resample()
    * NOTE: You may find std::discrete_distribution helpful here.
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
+  //获取所有粒子的权重，放入向量
+  vector<double> weights;
+  for (int i = 0; i < num_particles; i++)
+  {
+    weights.push_back(particles[i].weight);
+  }
+  //根据权重向量生成随机的索引
+  default_random_engine e;
+  std::discrete_distribution<int> index (weights.begin(),weights.end());
+
+  //重采样粒子
+  vector<Particle> new_particles;
+  for (int i = 0; i < num_particles; i++)
+  {
+    new_particles[i] = particles[index(e)];
+  }
+  particles = new_particles;
+
 }
 
 void ParticleFilter::SetAssociations(Particle &particle,
