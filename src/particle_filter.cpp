@@ -235,7 +235,7 @@ void ParticleFilter::updateWeights(double sensor_range,
     // }
     
     //将权重重新初始化，不积累，否则最终将归零
-  particles[i].weight = 1.0;
+    particles[i].weight = 1.0;
 
     //计算weight
 
