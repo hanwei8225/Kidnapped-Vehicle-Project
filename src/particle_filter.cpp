@@ -34,7 +34,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[])
    * NOTE: Consult particle_filter.h for more information about this method 
    *   (and others in this file).
    */
-  num_particles = 1000; // TODO: Set the number of particles
+  num_particles = 100; // TODO: Set the number of particles
 
   //gaussion
   static default_random_engine e;
@@ -114,26 +114,55 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
    *   probably find it useful to implement this method and use it as a helper 
    *   during the updateWeights phase.
    */
-  //每一个地图上的参考点坐标，都从测量点中找到与之最接近的一个，将两个对齐
 
-  vector<LandmarkObs> new_observations;
 
-  for (int i = 0; i < predicted.size(); i++)
+  //每一个地图上的参考点坐标，都从测量点中找到与之最接近的一个，将两个对齐,使用索引对齐
+//******************待发现错误，暂时跑不通
+  // vector<LandmarkObs> new_observations;
+
+  // for (unsigned int i = 0; i < predicted.size(); i++)
+  // {
+  //   double min_len = std::numeric_limits<double>::max();
+  //   //  double min_len = 0;
+  //   int index = -1;
+  //   for (int j = 0; j < observations.size(); j++)
+  //   {
+  //     double len = dist(predicted[i].x, predicted[i].y, observations[j].x, observations[j].y);
+  //     if (len < min_len)
+  //     {
+  //       min_len = len;
+  //       index = j;
+  //     }
+  //   }
+  //   new_observations.push_back( observations[index]);
+  // }
+
+  // std::cout << "observations:" << observations.size() << std::endl;
+  // std::cout << "new_observations:" << new_observations.size() << std::endl;
+  // observations = new_observations;
+
+
+// 每一个地图上的参考点坐标，都从测量点中找到与之最接近的一个，将两个对齐,  使用ID对其
+  for (unsigned int i = 0; i < observations.size(); i++)
   {
-    double min_len = dist(predicted[i].x, predicted[i].y, observations[0].x, observations[0].y);
-    int index = 0;
-    for (int j = 0; j < observations.size(); j++)
+    //将距离最大化
+    double min_len = std::numeric_limits<double>::max();
+    int id = -1;
+    // 找到最接近的点的id
+    for (int j = 0; j < particles.size(); j++)
     {
-      double len = dist(predicted[i].x, predicted[i].y, observations[j].x, observations[j].y);
+      double len = dist(predicted[j].x, predicted[j].y, observations[i].x, observations[i].y);
+      // std::cout << "len:" << len << std::endl;
       if (len < min_len)
       {
         min_len = len;
-        index = j;
+        id = predicted[j].id;
       }
-    }
-    new_observations[i] = observations[index];
   }
-  observations = new_observations;
+  observations[i].id = id;
+  }
+
+  
 }
 
 void ParticleFilter::updateWeights(double sensor_range,
@@ -161,53 +190,85 @@ void ParticleFilter::updateWeights(double sensor_range,
   {
     //对于每一个粒子
     Particle p = particles[i];
-
+    
     //只考虑在传感器测量范围内的地图参考点作为点集，为地图坐标,计算方形比计算圆形快很多
     vector<LandmarkObs> predictions;
     for (int k = 0; k < map_landmarks.landmark_list.size(); k++)
     {
       Map::single_landmark_s m = map_landmarks.landmark_list[k];
-      if ((fabs(p.x - m.x_f) < sensor_range) && (fabs(p.y - m.y_f) < sensor_range))
+      if ((fabs(p.x - m.x_f) <= sensor_range) && (fabs(p.y - m.y_f) <= sensor_range))
       {
-        LandmarkObs pre;
-        pre.id = m.id_i;
-        pre.x = m.x_f;
-        pre.y = m.y_f;
-        predictions.push_back(pre);
+
+        predictions.push_back(LandmarkObs{ m.id_i, m.x_f, m.y_f });
       }
     }
 
     //转换每一个测量到的参考点的坐标，从汽车坐标系转换为地图坐标系
     vector<LandmarkObs> observations_map;
-    for (int j = 0; j < observations.size(); j++)
+    for (unsigned int j = 0; j < observations.size(); j++)
     {
-      LandmarkObs obs = observations[j];
-      double x_map = p.x + (cos(p.theta) * obs.x) - (sin(p.theta) * obs.y);
-      double y_map = p.y + (sin(p.theta) * obs.x) - (cos(p.theta) * obs.y);
-      observations_map.push_back(LandmarkObs{obs.id,x_map,y_map});
+      double x_map = p.x + cos(p.theta) * observations[j].x - sin(p.theta) * observations[j].y;
+      double y_map = p.y + sin(p.theta) * observations[j].x + cos(p.theta) * observations[j].y;
+      observations_map.push_back(LandmarkObs{observations[j].id,x_map,y_map});
 
     }
+
+    // std::cout << "observations_map_pre:" << observations_map.size() << std::endl;
+    // for (size_t k = 0; k < observations_map.size(); k++)
+    // {
+    //   std::cout << "observations_map_pre: x=" <<observations_map[k].x << "  y= "<<observations_map[k].y << "  id= "<<observations_map[k].id<< std::endl;
+    // }
 
     //匹配测试数据属于哪个地标
     dataAssociation(predictions,observations_map);
+    // std::cout << "predictions:" << predictions.size() << std::endl;
+
+    // for (size_t k = 0; k < predictions.size(); k++)
+    // {
+    //   std::cout << "predictions: x=" << predictions[k].x << "  y= "<<predictions[k].y << "  id= "<<predictions[k].id<< std::endl;
+    // }
+
+    // std::cout << "observations_map:" << observations_map.size() << std::endl;
+    // for (size_t k = 0; k < observations_map.size(); k++)
+    // {
+    //   std::cout << "observations_map: x=" <<observations_map[k].x << "  y= "<<observations_map[k].y << "  id= "<<observations_map[k].id<< std::endl;
+    // }
+    
+    //将权重重新初始化，不积累，否则最终将归零
+  particles[i].weight = 1.0;
 
     //计算weight
-    for (int j = 0; j < predictions.size(); j++)
+
+    for (int j = 0; j < observations_map.size(); j++)
     {
-      LandmarkObs pred = predictions[j];
+
+    /*
+    这种方法是使用ID对齐，所以需要进行找ID的行为，需要每次进行一次循环，对应的数据处理是使用ID对齐
+    */
       LandmarkObs obs = observations_map[j];
-      double pxy = 0.5 * M_PI*(sig_x*sig_y)*exp(-((((obs.x -pred.x) * (obs.x -pred.x)) / (2 * (sig_x * sig_x)))
-                                              + (((obs.y -pred.y) * (obs.y -pred.y)) / (2 * (sig_y * sig_y)))));
+      LandmarkObs pred;
+      for (unsigned k = 0; k < predictions.size(); k++)
+      {
+        if(predictions[k].id == obs.id){
+          pred = predictions[k];
+        }
+      }
+
+
+    /*
+    这种方法是使用索引对齐，不需要进行循环
+    */
+  //  LandmarkObs pred = predictions[j];
+  //  LandmarkObs obs = observations_map[j];
+
+
+      double pxy = (0.5 / (M_PI*sig_x*sig_y))*exp(-(pow(pred.x - obs.x,2) / (2*pow(sig_x,2)) + pow(pred.y - obs.y,2)/(2*pow(sig_y,2))));
+      // std::cout << "pxy=" << pxy << std::endl;
       particles[i].weight *= pxy;
     }
-    
+      }
 
 
-
-
-    // double pxy = 0.5 * M_PI*(sig_x*sig_y)*exp(-((((obs.x -p.x) * (obs.x -p.x)) / (2 * (sig_x * sig_x)))
-    //                                               + (((obs.y -p.y) * (obs.y -p.y)) / (2 * (sig_y * sig_y)))));
-  }
 }
 
 void ParticleFilter::resample()
@@ -232,7 +293,7 @@ void ParticleFilter::resample()
   vector<Particle> new_particles;
   for (int i = 0; i < num_particles; i++)
   {
-    new_particles[i] = particles[index(e)];
+    new_particles.push_back(particles[index(e)]);
   }
   particles = new_particles;
 
