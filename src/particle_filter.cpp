@@ -31,8 +31,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[])
    *   first position (based on estimates of x, y, theta and their uncertainties
    *   from GPS) and all weights to 1. 
    * TODO: Add random Gaussian noise to each particle.
-   * NOTE: Consult particle_filter.h for more information about this method 
-   *   (and others in this file).
    */
   num_particles = 100; // TODO: Set the number of particles
 
@@ -66,8 +64,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
                                 double velocity, double yaw_rate)
 {
   /**
-   * TODO: Add measurements to each particle and add random Gaussian noise.
-   * NOTE: When adding noise you may find std::normal_distribution 
+   * Add measurements to each particle and add random Gaussian noise.
+   *  When adding noise you may find std::normal_distribution 
    *   and std::default_random_engine useful.
    *  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
    *  http://www.cplusplus.com/reference/random/default_random_engine/
@@ -251,7 +249,7 @@ void ParticleFilter::updateWeights(double sensor_range,
       }
 
       /*
-    这种方法是使用索引对齐，不需要进行循环
+    这种方法是使用索引对齐，不需要进行循环,暂时行不通
     */
       //  LandmarkObs pred = predictions[j];
       //  LandmarkObs obs = observations_map[j];
